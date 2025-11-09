@@ -1,0 +1,105 @@
+﻿<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:mapsui="clr-namespace:Mapsui.UI.Avalonia;assembly=Mapsui.UI.Avalonia"
+        xmlns:vm="clr-namespace:AxxonSoft_OSM_.ViewModels"
+        xmlns:models="clr-namespace:AxxonSoft_OSM_.Models"
+        mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
+        Height="580"
+        xmlns:conv="clr-namespace:AxxonSoft_OSM_.Converters"
+        x:Class="AxxonSoft_OSM_.Views.MainWindow"
+        Title="AxxonSoft_OSM_"
+        FontFamily="Arial"
+        x:DataType="vm:MainWindowViewModel">
+    <Grid Background="Black">
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition/>
+            <ColumnDefinition Width="250"/>
+        </Grid.ColumnDefinitions>
+        
+        <!-- Карта -->
+        <mapsui:MapControl Grid.Column="0" x:Name="MyMapControl" PointerPressed="MapPointerPressed"/>
+        
+        <!-- Панель управления -->
+        <StackPanel Grid.Column="1">
+            <!-- Режим создания области -->
+            <Border Background="{Binding IsInAreaMode, Converter={StaticResource BoolToBrushConverter}, ConverterParameter='Green;Gray'}" 
+            Margin="10,10,10,5" Padding="5" CornerRadius="5">
+                <StackPanel>
+                    <TextBlock Text="{Binding IsInAreaMode, Converter={StaticResource BoolToTextConverter}, ConverterParameter='Режим создания области;Обычный режим'}" 
+                    FontWeight="Bold" HorizontalAlignment="Center"/>
+                    
+                    <Button Content="Выделить область" 
+                            Command="{Binding StartAreaCommand}"
+                            Margin="0,5,0,0"
+                            IsEnabled="{Binding IsNotInAreaMode}"
+                            HorizontalAlignment="Stretch"/>
+                    
+                    <StackPanel Orientation="Horizontal" Margin="0,5,0,0">
+                        <Button Content="Завершить" 
+                                Command="{Binding FinishAreaCommand}"
+                                Margin="0,0,5,0"
+                                IsEnabled="{Binding IsInAreaMode}"
+                                HorizontalAlignment="Stretch"/>
+                        <Button Content="Отмена" 
+                                Command="{Binding CancelAreaCommand}"
+                                Margin="5,0,0,0"
+                                IsEnabled="{Binding IsInAreaMode}"
+                                HorizontalAlignment="Stretch"/>
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+
+            <Separator Margin="10,5,10,5"/>
+            
+            <!-- Список точек -->
+            <TextBlock Text="Точки" FontWeight="Bold" Margin="10,5,10,5"/>
+            <ListBox ItemsSource="{Binding Points}"
+                     SelectedItem="{Binding SelectedPoint}"
+                     Margin="10,0,10,5"
+                     Height="120">
+                <ListBox.ItemTemplate>
+                    <DataTemplate x:DataType="models:MapPoint">
+                        <TextBlock Text="{Binding DisplayText}" Margin="2"/>
+                    </DataTemplate>
+                </ListBox.ItemTemplate>
+            </ListBox>
+            
+            <Button Content="Удалить выбранную точку" 
+                    Command="{Binding DeleteSelectedPointCommand}"
+                    Margin="10,0,10,5"
+                    HorizontalAlignment="Stretch"/>
+            
+            <Button Content="Очистить все точки" 
+                    Command="{Binding ClearAllPointsCommand}"
+                    Margin="10,0,10,5"
+                    HorizontalAlignment="Stretch"/>
+
+            <Separator Margin="10,5,10,5"/>
+            
+            <!-- Список областей -->
+            <TextBlock Text="Области" FontWeight="Bold" Margin="10,5,10,5"/>
+            <ListBox ItemsSource="{Binding Areas}"
+                     SelectedItem="{Binding SelectedArea}"
+                     Margin="10,0,10,5"
+                     Height="120">
+                <ListBox.ItemTemplate>
+                    <DataTemplate x:DataType="models:MapArea">
+                        <TextBlock Text="{Binding DisplayText}" Margin="2"/>
+                    </DataTemplate>
+                </ListBox.ItemTemplate>
+            </ListBox>
+            
+            <Button Content="Удалить выбранную область" 
+                    Command="{Binding DeleteSelectedAreaCommand}"
+                    Margin="10,0,10,5"
+                    HorizontalAlignment="Stretch"/>
+            
+            <Button Content="Очистить все области" 
+                    Command="{Binding ClearAllAreasCommand}"
+                    Margin="10,0,10,10"
+                    HorizontalAlignment="Stretch"/>
+        </StackPanel>
+    </Grid>
+</Window>
