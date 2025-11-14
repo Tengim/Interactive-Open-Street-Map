@@ -3,7 +3,7 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.14.36221.1
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AxxonSoft(OSM)", "AxxonSoft(OSM)\AxxonSoft(OSM).csproj", "{4DEB0878-0AA8-4998-BA81-C5768F6306D9}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AxxonSoft_OSM_", "AxxonSoft(OSM)\AxxonSoft_OSM_.csproj", "{4DEB0878-0AA8-4998-BA81-C5768F6306D9}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

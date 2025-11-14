@@ -1,0 +1,31 @@
+﻿<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d" d:DesignWidth="300" d:DesignHeight="380"
+        x:Class="AxxonSoft_OSM_.AreaEditDialog"
+        Title="AreaEditDialog"
+        Width="300" Height="380"
+        x:CompileBindings="False">
+
+    <StackPanel Margin="20" Spacing="10">
+        <TextBlock Text="Название области:"/>
+        <TextBox Text="{Binding Name}"/>
+
+        <StackPanel Grid.Column="0" Margin="0,0,0,0">
+            <TextBlock Text="Цвет области:"/>
+            <ColorPicker Color="{Binding FillColor, Mode=TwoWay}" Width="100" Height="50" Margin="20"/>
+        </StackPanel>
+
+        <StackPanel Grid.Column="0" Margin="0,0,0,0">
+            <TextBlock Text="Цвет Обводки:"/>
+            <ColorPicker Color="{Binding BorderColor, Mode=TwoWay}" Width="100" Height="50" Margin="20"/>
+        </StackPanel>
+        
+        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="10">
+            <Button Content="Сохранить" Command="{Binding SaveCommand}"/>
+            <Button Content="Отмена" Command="{Binding CancelCommand}"/>
+        </StackPanel>
+
+    </StackPanel>
+</Window>

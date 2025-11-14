@@ -1,12 +1,14 @@
 ﻿using Avalonia.Input;
 using AxxonSoft_OSM_.Models;
 using AxxonSoft_OSM_.Services;
+using AxxonSoft_OSM_.Views;
 using Mapsui;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.Linq;
+using System.Threading.Tasks;
 using System.Windows.Input;
 
 namespace AxxonSoft_OSM_.ViewModels
@@ -139,14 +141,18 @@ namespace AxxonSoft_OSM_.ViewModels
             }
         }
 
-        private void AddPoint(double lng, double lat)
+        private async void AddPoint(double lng, double lat)
         {
-            _mapService.AddPoint(lng, lat);
-
-            var newFeature = _mapService.FindPointAtLocation(lng, lat);
-            var newPoint = new MapPoint(lng, lat, newFeature);
-
-            Points.Add(newPoint);
+            var tempPoint = new MapPoint(lng, lat);
+            var result = await ShowPointEditDialogAsync(tempPoint);
+            
+            if (result != null)
+            {
+                _mapService.AddPoint(result);
+                var newFeature = _mapService.FindPointAtLocation(result.Longitude, result.Latitude);
+                result.Feature = newFeature;
+                Points.Add(result);
+            }
         }
 
         private void RemovePointByFeature(IFeature feature)
@@ -179,6 +185,7 @@ namespace AxxonSoft_OSM_.ViewModels
             Points.Clear();
             SelectedPoint = null;
         }
+
         private void StartAreaMode()
         {
             IsInAreaMode = true;
@@ -189,7 +196,7 @@ namespace AxxonSoft_OSM_.ViewModels
         private void AddTempAreaPoint(double lng, double lat)
         {
             var point = new MapPoint(lng, lat);
-            _mapService.AddPoint(lng, lat);
+            _mapService.AddPoint(point);
 
             var newFeature = _mapService.FindPointAtLocation(lng, lat);
             point.Feature = newFeature;
@@ -200,26 +207,27 @@ namespace AxxonSoft_OSM_.ViewModels
             Debug.WriteLine($"Добавлена точка области: {lng}, {lat} (всего: {_tempAreaPoints.Count})");
         }
 
-        private void FinishArea()
+        private async void FinishArea()
         {
-            if (_tempAreaPoints.Count < 3)
+            if (_tempAreaPoints.Count < 3) return;
+
+            var tempArea = new MapArea();
+            tempArea.Points.AddRange(_tempAreaPoints);
+
+            var result = await ShowAreaEditDialogAsync(tempArea);
+
+            if (result != null)
             {
-                Debug.WriteLine("Для создания области нужно минимум 3 точки");
-                return;
+                _mapService.AddArea(_tempAreaPoints, result);
+                Areas.Add(result);
+                _mapService.ClearTempAreaPoints(_tempAreaPoints);
+                _tempAreaPoints.Clear();
+                IsInAreaMode = false;
             }
-
-            var newArea = new MapArea();
-            newArea.Points.AddRange(_tempAreaPoints);
-
-            _mapService.AddArea(_tempAreaPoints, newArea);
-
-            Areas.Add(newArea);
-
-            _mapService.ClearTempAreaPoints(_tempAreaPoints);
-            _tempAreaPoints.Clear();
-            IsInAreaMode = false;
-
-            Debug.WriteLine($"Область создана с {newArea.Points.Count} точками");
+            else
+            {
+                CancelArea();
+            }
         }
 
         private void CancelArea()
@@ -248,6 +256,43 @@ namespace AxxonSoft_OSM_.ViewModels
             }
             Areas.Clear();
             SelectedArea = null;
+        }
+
+        private async Task<MapPoint?> ShowPointEditDialogAsync(MapPoint point)
+        {
+            var tcs = new TaskCompletionSource<MapPoint?>();
+
+            var viewModel = new PointEditDialogViewModel(point);
+            var window = new PointEditDialog
+            {
+                DataContext = viewModel
+            };
+
+            viewModel.CloseDialog += (result) =>
+            {
+                tcs.SetResult(result);
+                window.Close();
+            };
+
+            window.Show();
+
+            return await tcs.Task;
+        }
+        private async Task<MapArea?> ShowAreaEditDialogAsync(MapArea area)
+        {
+            var tcs = new TaskCompletionSource<MapArea?>();
+
+            var viewModel = new AreaEditDialogViewModel(area);
+            var window = new AreaEditDialog { DataContext = viewModel };
+
+            viewModel.CloseDialog += (result) =>
+            {
+                tcs.SetResult(result);
+                window.Close();
+            };
+
+            window.Show();
+            return await tcs.Task;
         }
     }
 }

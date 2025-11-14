@@ -30,16 +30,13 @@ namespace AxxonSoft_OSM_.Services
                 Style = new SymbolStyle
                 {
                     SymbolType = SymbolType.Ellipse,
-                    Fill = new Brush(Color.Red),
-                    Outline = new Pen(Color.Black, 2),
-                    SymbolScale = 0.5
+                    SymbolScale = 0.1
                 }
             };
 
             _areasLayer = new WritableLayer
             {
-                Name = "Areas",
-                Style = CreateAreaStyle()
+                Name = "Areas"
             };
 
             var tileLayer = OpenStreetMap.CreateTileLayer("AxxonSoft_OSM/1.0 (1997denic@gmail.com)");
@@ -48,26 +45,51 @@ namespace AxxonSoft_OSM_.Services
             _mapControl.Map.Layers.Add(_pointsLayer);
 
             _mapControl.Map.Widgets.Clear();
-            var mercator = SphericalMercator.FromLonLat(28.02, 53.31);//Будет подгружаться из файла
+            var mercator = SphericalMercator.FromLonLat(28.02, 53.31);
             _mapControl.Map.Navigator.CenterOnAndZoomTo(new MPoint(mercator.x, mercator.y), 2000, 0000);
         }
 
-        private static VectorStyle CreateAreaStyle()
+        private static IStyle CreatePointStyle(MapPoint point)
         {
-            return new VectorStyle
-            {
-                Fill = new Brush(new Color(255, 0, 0, 128)),
-                Outline = new Pen(Color.Red, 3)
+            return new SymbolStyle
+            {SymbolType = SymbolType.Ellipse,
+                Fill = new Brush(Color.FromArgb(point.PointColor.A, point.PointColor.R, point.PointColor.G, point.PointColor.B)),
+                Outline = new Pen(Color.Black, 2),
+                SymbolScale = point.PointSize
             };
         }
 
-        public void AddPoint(double lng, double lat)
+        private static IStyle CreateAreaStyle(MapArea area)
         {
-            var point = SphericalMercator.FromLonLat(lng, lat).ToMPoint();
-            var feature = new PointFeature(point);
+            return new VectorStyle
+            {
+                Fill = new Brush(new Color(area.FillColor.R, area.FillColor.G, area.FillColor.B, 128)),
+                Outline = new Pen(new Color(area.BorderColor.R, area.BorderColor.G, area.BorderColor.B, 128), 2),
+            };
+        }
+
+        public void AddPoint(MapPoint point)
+        {
+            var mpoint = SphericalMercator.FromLonLat(point.Longitude, point.Latitude).ToMPoint();
+            var feature = new PointFeature(mpoint);
+
+            feature.Styles.Add(CreatePointStyle(point));
+
             _pointsLayer.Add(feature);
+            point.Feature = feature;
             _pointsLayer.DataHasChanged();
             _mapControl.Refresh();
+        }
+
+        public void UpdatePointStyle(MapPoint point)
+        {
+            if (point.Feature != null)
+            {
+                point.Feature.Styles.Clear();
+                point.Feature.Styles.Add(CreatePointStyle(point));
+                _pointsLayer.DataHasChanged();
+                _mapControl.Refresh();
+            }
         }
 
         public void RemovePoint(IFeature pointToRemove)
@@ -116,7 +138,7 @@ namespace AxxonSoft_OSM_.Services
             return SphericalMercator.ToLonLat(worldPosition.X, worldPosition.Y);
         }
 
-        public void AddArea(List<MapPoint> areaPoints, Models.MapArea mapArea)
+        public void AddArea(List<MapPoint> areaPoints, MapArea mapArea)
         {
             if (areaPoints.Count < 3) return;
 
@@ -129,6 +151,8 @@ namespace AxxonSoft_OSM_.Services
             var polygon = new Polygon(new LinearRing(coordinates.Select(p => new Coordinate(p.X, p.Y)).ToArray()));
             var feature = new GeometryFeature(polygon);
 
+            feature.Styles.Add(CreateAreaStyle(mapArea));
+
             mapArea.Feature = feature;
 
             _areasLayer.Add(feature);
@@ -136,7 +160,7 @@ namespace AxxonSoft_OSM_.Services
             _mapControl.Refresh();
         }
 
-        public void RemoveArea(Models.MapArea area)
+        public void RemoveArea(MapArea area)
         {
             if (area.Feature is IFeature feature)
             {

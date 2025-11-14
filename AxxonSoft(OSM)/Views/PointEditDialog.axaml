@@ -1,0 +1,76 @@
+﻿<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d" d:DesignWidth="400" d:DesignHeight="500"
+        x:Class="AxxonSoft_OSM_.PointEditDialog"
+        Title="PointEditDialog"
+        Width="400" Height="500"
+        x:CompileBindings="False">
+
+    <ScrollViewer>
+        <StackPanel Margin="20" Spacing="15">
+            <!-- Координаты-->
+            <TextBlock Text="Координаты" FontWeight="Bold"/>
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="10"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+                <StackPanel Grid.Column="0">
+                    <TextBlock Text="Долгота:" FontSize="12" Foreground="Gray"/>
+                    <TextBox Text="{Binding Longitude, StringFormat={}{0:F6}}" IsReadOnly="True"/>
+                </StackPanel>
+                <StackPanel Grid.Column="2">
+                    <TextBlock Text="Широта:" FontSize="12" Foreground="Gray"/>
+                    <TextBox Text="{Binding Latitude, StringFormat={}{0:F6}}" IsReadOnly="True"/>
+                </StackPanel>
+            </Grid>
+
+            <Separator/>
+
+            <!-- Основная информация -->
+            <TextBlock Text="Основная информация" FontWeight="Bold"/>
+            
+            <StackPanel>
+                <TextBlock Text="Название точки:"/>
+                <TextBox Text="{Binding Name}" Watermark="Введите название точки"/>
+            </StackPanel>
+
+            <Separator/>
+
+            <!-- Внешний вид -->
+            <TextBlock Text="Внешний вид" FontWeight="Bold"/>
+            
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+                
+                <StackPanel Grid.Column="0" Margin="0,0,0,0">
+                    <TextBlock Text="Цвет точки:"/>
+                    <ColorPicker Color="{Binding PointColor}" Width="100" Height="50" Margin="20"/>
+                </StackPanel>
+                
+                <StackPanel Grid.Column="1">
+                    <TextBlock Text="Размер точки:"/>
+                    <Slider Minimum="0.3" Maximum="2.0" Value="{Binding PointSize}" 
+                            TickFrequency="0.01" IsSnapToTickEnabled="True"/>
+                    <TextBlock Text="{Binding PointSize, StringFormat={}Размер: {0:F1}}" 
+                               HorizontalAlignment="Center" FontSize="10"/>
+                </StackPanel>
+            </Grid>
+
+            <Separator/>
+
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="10">
+                <Button Content="Отмена" Command="{Binding CancelCommand}" 
+                        MinWidth="80"/>
+                <Button Content="Сохранить" Command="{Binding SaveCommand}" 
+                        Background="Green" Foreground="White" MinWidth="80"/>
+            </StackPanel>
+        </StackPanel>
+    </ScrollViewer>
+</Window>
