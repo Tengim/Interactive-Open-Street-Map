@@ -1,0 +1,21 @@
+﻿using System;
+using System.Text.Json;
+using System.Text.Json.Serialization;
+using Avalonia.Media;
+
+namespace AxxonSoft_OSM_.Models.DataModels
+{
+    public class ColorJsonConverter : JsonConverter<Color>
+    {
+        public override Color Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+        {
+            var colorString = reader.GetString();
+            return Color.Parse(colorString ?? "#FFFF0000");
+        }
+
+        public override void Write(Utf8JsonWriter writer, Color value, JsonSerializerOptions options)
+        {
+            writer.WriteStringValue(value.ToString());
+        }
+    }
+}

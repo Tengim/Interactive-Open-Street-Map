@@ -1,5 +1,7 @@
 ﻿using Avalonia.Input;
+using Avalonia.Media;
 using AxxonSoft_OSM_.Models;
+using AxxonSoft_OSM_.Models.DataModels;
 using AxxonSoft_OSM_.Services;
 using AxxonSoft_OSM_.Views;
 using Mapsui;
@@ -20,6 +22,8 @@ namespace AxxonSoft_OSM_.ViewModels
         private MapArea? _selectedArea;
         private bool _isInAreaMode;
         private List<MapPoint> _tempAreaPoints = new List<MapPoint>();
+
+        private readonly DataService _dataService;
 
         public ObservableCollection<MapPoint> Points { get; } = new ObservableCollection<MapPoint>();
         public ObservableCollection<MapArea> Areas { get; } = new ObservableCollection<MapArea>();
@@ -72,10 +76,12 @@ namespace AxxonSoft_OSM_.ViewModels
         public RelayCommand CancelAreaCommand { get; }
         public RelayCommand DeleteSelectedAreaCommand { get; }
         public RelayCommand ClearAllAreasCommand { get; }
+        public RelayCommand SaveDataCommand { get; }
 
         public MainWindowViewModel(MapService mapService)
         {
             _mapService = mapService;
+            _dataService = new DataService();
 
             AddPointCommand = new RelayCommand<double[]>((coords) => AddPoint(coords[0], coords[1]));
             DeleteSelectedPointCommand = new RelayCommand(
@@ -110,6 +116,8 @@ namespace AxxonSoft_OSM_.ViewModels
 
             Points.CollectionChanged += (s, e) => ClearAllPointsCommand.RaiseCanExecuteChanged();
             Areas.CollectionChanged += (s, e) => ClearAllAreasCommand.RaiseCanExecuteChanged();
+
+            _ = LoadDataAsync();
         }
 
         public void HandleMapPointerPressed(PointerPressedEventArgs e, object? mapControl)
@@ -121,7 +129,7 @@ namespace AxxonSoft_OSM_.ViewModels
 
                 if (IsInAreaMode)
                 {
-                    AddTempAreaPoint(lon, lat);
+                    AddTempAreaPoint(lat, lon);
                 }
                 else
                 {
@@ -134,16 +142,16 @@ namespace AxxonSoft_OSM_.ViewModels
                     }
                     else
                     {
-                        AddPoint(lon, lat);
+                        AddPoint(lat, lon);
                         Debug.WriteLine("Point added.");
                     }
                 }
             }
         }
 
-        private async void AddPoint(double lng, double lat)
+        private async void AddPoint(double lat, double lon)
         {
-            var tempPoint = new MapPoint(lng, lat);
+            var tempPoint = new MapPoint(lat, lon);
             var result = await ShowPointEditDialogAsync(tempPoint);
             
             if (result != null)
@@ -193,18 +201,18 @@ namespace AxxonSoft_OSM_.ViewModels
             Debug.WriteLine("Режим создания области активирован");
         }
 
-        private void AddTempAreaPoint(double lng, double lat)
+        private void AddTempAreaPoint(double lat, double lon)
         {
-            var point = new MapPoint(lng, lat);
+            var point = new MapPoint(lat, lon);
             _mapService.AddPoint(point);
 
-            var newFeature = _mapService.FindPointAtLocation(lng, lat);
+            var newFeature = _mapService.FindPointAtLocation(lat, lon);
             point.Feature = newFeature;
 
             _tempAreaPoints.Add(point);
             FinishAreaCommand.RaiseCanExecuteChanged();
 
-            Debug.WriteLine($"Добавлена точка области: {lng}, {lat} (всего: {_tempAreaPoints.Count})");
+            Debug.WriteLine($"Добавлена точка области: {lat}, {lon} (всего: {_tempAreaPoints.Count})");
         }
 
         private async void FinishArea()
@@ -293,6 +301,150 @@ namespace AxxonSoft_OSM_.ViewModels
 
             window.Show();
             return await tcs.Task;
+        }
+
+        public async Task SaveBeforeExitAsync()
+        {
+            await SaveDataAsync();
+        }
+        private async Task SaveDataAsync()
+        {
+            try
+            {
+                Console.WriteLine($"Начато сохранение {Points.Count} точек...");
+
+                // Сохраняем точки
+                var pointsToSave = Points.Select(p => new PointData
+                {
+                    Longitude = p.Longitude,
+                    Latitude = p.Latitude,
+                    Name = p.Name,
+                    Color = p.PointColor.ToString(),
+                    Size = p.PointSize
+                }).ToList();
+                
+                // Сохраняем области
+                var areasToSave = Areas.Select(a => new AreaData
+                {
+                    Name = a.Name,
+                    Points = a.Points.Select(p => new PointData
+                    {
+                        Longitude = p.Longitude,
+                        Latitude = p.Latitude,
+                        Name = p.Name,
+                        Color = p.PointColor.ToString(),
+                        Size = p.PointSize
+                    }).ToList(),
+                    FillColor = a.FillColor.ToString(),
+                    BorderColor = a.BorderColor.ToString()
+                }).ToList();
+
+                // Сохраняем камеру
+                var cameraToSave = _mapService.GetCameraState();
+
+                // Создаем полный объект сохранения
+                var saveData = new SaveData
+                {
+                    Camera = cameraToSave,
+                    Points = pointsToSave,
+                    Areas = areasToSave
+                };
+
+                await _dataService.SaveDataAsync(saveData);
+
+                Console.WriteLine($"Успешно сохранено {pointsToSave.Count} точек");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Ошибка в SaveDataAsync: {ex.Message}");
+            }
+        }
+
+        private async Task LoadDataAsync()
+        {
+            try
+            {
+                Console.WriteLine("Загрузка данных...");
+
+                var saveData = await _dataService.LoadDataAsync();
+                if (saveData == null)
+                {
+                    Console.WriteLine("Данные не загружены (null)");
+                    return;
+                }
+
+                // Очищаем текущие данные
+                Points.Clear();
+                Areas.Clear();
+                _mapService.ClearAllPoints();
+                ClearAllAreas();
+
+                Console.WriteLine($"Загрузка {saveData.Points.Count} точек...");
+
+                // Восстанавливаем точки
+                foreach (var savedPoint in saveData.Points)
+                {
+                    try
+                    {
+                        var point = new MapPoint(
+                            latitude: savedPoint.Latitude,
+                            longitude: savedPoint.Longitude)
+                        {
+                            Name = savedPoint.Name,
+                            PointColor = Color.Parse(savedPoint.Color),
+                            PointSize = savedPoint.Size
+                        };
+
+                        _mapService.AddPoint(point);
+                        Points.Add(point);
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"Ошибка при загрузке точки: {ex.Message}");
+                    }
+                }
+
+                // Восстанавливаем области
+                Console.WriteLine($"Загрузка {saveData.Areas.Count} областей...");
+                foreach (var savedArea in saveData.Areas)
+                {
+                    try
+                    {
+                        var areaPoints = savedArea.Points.Select(p =>
+                            new MapPoint(p.Latitude, p.Longitude)
+                            {
+                                Name = p.Name,
+                                PointColor = Color.Parse(p.Color),
+                                PointSize = p.Size
+                            }).ToList();
+
+                        var area = new MapArea
+                        {
+                            Name = savedArea.Name,
+                            FillColor = Color.Parse(savedArea.FillColor),
+                            BorderColor = Color.Parse(savedArea.BorderColor)
+                        };
+
+                        area.Points.AddRange(areaPoints);
+                        _mapService.AddArea(areaPoints, area);
+                        Areas.Add(area);
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"Ошибка при загрузке области: {ex.Message}");
+                    }
+                }
+
+                // Восстанавливаем камеру
+                Console.WriteLine("Восстанавливаем состояние камеры...");
+                _mapService.SetCameraState(saveData.Camera);
+
+                Console.WriteLine($"Успешно загружено {Points.Count} точек");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Ошибка в LoadDataAsync: {ex.Message}");
+            }
         }
     }
 }

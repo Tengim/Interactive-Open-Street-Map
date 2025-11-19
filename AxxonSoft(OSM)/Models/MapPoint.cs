@@ -5,15 +5,16 @@ namespace AxxonSoft_OSM_.Models
 {
     public class MapPoint
     {
-        public double Longitude { get; set; }
-        public double Latitude { get; set; }
+        public double Longitude { get; set; } // Долгота
+        public double Latitude { get; set; }   // Широта
         public string Name { get; set; } = string.Empty;
         public Color PointColor { get; set; } = Colors.Red;
         public double PointSize { get; set; } = 0.5;
         public IFeature? Feature { get; set; }
-        public MapPoint(double lat, double lon) {
-            Longitude = lat; 
-            Latitude = lon;
+        public MapPoint(double latitude, double longitude)
+        {
+            Latitude = latitude;
+            Longitude = longitude;
         }
 
         public string DisplayText => string.IsNullOrEmpty(Name)

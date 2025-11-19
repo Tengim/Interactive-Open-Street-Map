@@ -1,4 +1,5 @@
 ﻿using AxxonSoft_OSM_.Models;
+using AxxonSoft_OSM_.Models.DataModels;
 using Mapsui;
 using Mapsui.Extensions;
 using Mapsui.Layers;
@@ -106,9 +107,9 @@ namespace AxxonSoft_OSM_.Services
             _mapControl.Refresh();
         }
 
-        public IFeature? FindPointAtLocation(double lng, double lat, double pixelTolerance = 10)
+        public IFeature? FindPointAtLocation(double lat, double lon, double pixelTolerance = 10)
         {
-            var targetPoint = SphericalMercator.FromLonLat(lng, lat).ToMPoint();
+            var targetPoint = SphericalMercator.FromLonLat(lon, lat).ToMPoint();
             var targetScreen = _mapControl.Map.Navigator.Viewport.WorldToScreen(targetPoint);
 
             foreach (var feature in _pointsLayer.GetFeatures())
@@ -181,6 +182,28 @@ namespace AxxonSoft_OSM_.Services
             }
             _pointsLayer.DataHasChanged();
             _mapControl.Refresh();
+        }
+
+        public CameraData GetCameraState()
+        {
+            var viewport = _mapControl.Map.Navigator.Viewport;
+            return new CameraData
+            {
+                CenterX = viewport.CenterX,
+                CenterY = viewport.CenterY,
+                Resolution = viewport.Resolution
+            };
+        }
+
+        public void SetCameraState(CameraData camera)
+        {
+            if (camera == null) return;
+            if (camera.Resolution == 0) camera.Resolution = 40000;
+            _mapControl.Map.Navigator.CenterOn(camera.CenterX, camera.CenterY);
+            _mapControl.Map.Navigator.ZoomTo(camera.Resolution);
+            _mapControl.Refresh();
+
+            Console.WriteLine($"Камера восстановлена: X={camera.CenterX:F2}, Y={camera.CenterY:F2}, Zoom={camera.Resolution:F2}");
         }
     }
 }
