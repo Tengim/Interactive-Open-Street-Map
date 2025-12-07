@@ -29,10 +29,16 @@ namespace AxxonSoft_OSM_.Models.DataModels
         public double Size { get; set; } = 1.0;
     }
 
+    public class AreaPointData
+    {
+        public double Longitude { get; set; }
+        public double Latitude { get; set; }
+    }
+
     public class AreaData
     {
         public string Name { get; set; } = string.Empty;
-        public List<PointData> Points { get; set; } = new List<PointData>();
+        public List<AreaPointData> Points { get; set; } = new List<AreaPointData>();
         public string FillColor { get; set; } = "#80FF0000"; // Полупрозрачный красный
         public string BorderColor { get; set; } = "#FFFF0000"; // Красный
     }

@@ -1,10 +1,12 @@
 ﻿using Avalonia.Input;
+using Avalonia.Markup.Xaml.MarkupExtensions;
 using Avalonia.Media;
 using AxxonSoft_OSM_.Models;
 using AxxonSoft_OSM_.Models.DataModels;
 using AxxonSoft_OSM_.Services;
 using AxxonSoft_OSM_.Views;
-using Mapsui;
+using Mapsui.Projections;
+using Mapsui.UI.Avalonia;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
@@ -34,6 +36,7 @@ namespace AxxonSoft_OSM_.ViewModels
             set
             {
                 _selectedPoint = value;
+                _mapService.CenterOn(SelectedPoint);
                 OnPropertyChanged();
                 DeleteSelectedPointCommand.RaiseCanExecuteChanged();
             }
@@ -57,14 +60,11 @@ namespace AxxonSoft_OSM_.ViewModels
             {
                 _isInAreaMode = value;
                 OnPropertyChanged();
-                OnPropertyChanged(nameof(IsNotInAreaMode));
                 StartAreaCommand.RaiseCanExecuteChanged();
                 FinishAreaCommand.RaiseCanExecuteChanged();
                 CancelAreaCommand.RaiseCanExecuteChanged();
             }
         }
-        
-        public bool IsNotInAreaMode => !IsInAreaMode;
 
         //Коммнады для UI
         public RelayCommand DeleteSelectedPointCommand { get; }
@@ -133,11 +133,12 @@ namespace AxxonSoft_OSM_.ViewModels
                 }
                 else
                 {
-                    var existingFeature = _mapService.FindPointAtLocation(lon, lat);
+                    var existingFeature = _mapService.FindPointAtLocation(lat, lon);
 
                     if (existingFeature != null)
                     {
-                        RemovePointByFeature(existingFeature);
+                        var pointToRemove = Points.FirstOrDefault(p => p.Feature == existingFeature);
+                        RemovePointByFeature(pointToRemove);
                         Debug.WriteLine("Point removed.");
                     }
                     else
@@ -151,23 +152,24 @@ namespace AxxonSoft_OSM_.ViewModels
 
         private async void AddPoint(double lat, double lon)
         {
+            if (!_mapService.IsValidCoordinate(lat, lon)) 
+                return;
+
             var tempPoint = new MapPoint(lat, lon);
             var result = await ShowPointEditDialogAsync(tempPoint);
             
             if (result != null)
             {
                 _mapService.AddPoint(result);
-                var newFeature = _mapService.FindPointAtLocation(result.Longitude, result.Latitude);
-                result.Feature = newFeature;
                 Points.Add(result);
             }
         }
 
-        private void RemovePointByFeature(IFeature feature)
+        private void RemovePointByFeature(MapPoint point)
         {
-            _mapService.RemovePoint(feature);
+            _mapService.RemovePoint(point.Feature);
 
-            var pointToRemove = Points.FirstOrDefault(p => p.Feature == feature);
+            var pointToRemove = Points.FirstOrDefault(p => p.Feature == point.Feature);
             if (pointToRemove != null)
             {
                 Points.Remove(pointToRemove);
@@ -183,7 +185,7 @@ namespace AxxonSoft_OSM_.ViewModels
         {
             if (SelectedPoint?.Feature != null)
             {
-                RemovePointByFeature(SelectedPoint.Feature);
+                RemovePointByFeature(SelectedPoint);
             }
         }
 
@@ -203,6 +205,9 @@ namespace AxxonSoft_OSM_.ViewModels
 
         private void AddTempAreaPoint(double lat, double lon)
         {
+            if (!_mapService.IsValidCoordinate(lat, lon))
+                return;
+
             var point = new MapPoint(lat, lon);
             _mapService.AddPoint(point);
 
@@ -327,13 +332,10 @@ namespace AxxonSoft_OSM_.ViewModels
                 var areasToSave = Areas.Select(a => new AreaData
                 {
                     Name = a.Name,
-                    Points = a.Points.Select(p => new PointData
+                    Points = a.Points.Select(p => new AreaPointData
                     {
                         Longitude = p.Longitude,
-                        Latitude = p.Latitude,
-                        Name = p.Name,
-                        Color = p.PointColor.ToString(),
-                        Size = p.PointSize
+                        Latitude = p.Latitude
                     }).ToList(),
                     FillColor = a.FillColor.ToString(),
                     BorderColor = a.BorderColor.ToString()
@@ -395,6 +397,9 @@ namespace AxxonSoft_OSM_.ViewModels
                             PointSize = savedPoint.Size
                         };
 
+                        if (!_mapService.IsValidCoordinate(point.Latitude, point.Longitude))
+                            return;
+
                         _mapService.AddPoint(point);
                         Points.Add(point);
                     }
@@ -411,12 +416,7 @@ namespace AxxonSoft_OSM_.ViewModels
                     try
                     {
                         var areaPoints = savedArea.Points.Select(p =>
-                            new MapPoint(p.Latitude, p.Longitude)
-                            {
-                                Name = p.Name,
-                                PointColor = Color.Parse(p.Color),
-                                PointSize = p.Size
-                            }).ToList();
+                            new MapPoint(p.Latitude, p.Longitude)).ToList();
 
                         var area = new MapArea
                         {

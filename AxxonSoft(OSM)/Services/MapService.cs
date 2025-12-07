@@ -21,6 +21,11 @@ namespace AxxonSoft_OSM_.Services
         private readonly WritableLayer _pointsLayer;
         private readonly WritableLayer _areasLayer;
 
+        private const double MIN_LATITUDE = -85.05112878;
+        private const double MAX_LATITUDE = 85.05112878;
+        private const double MIN_LONGITUDE = -180.0;
+        private const double MAX_LONGITUDE = 180.0; 
+
         public MapService(MapControl mapControl)
         {
             _mapControl = mapControl;
@@ -40,14 +45,14 @@ namespace AxxonSoft_OSM_.Services
                 Name = "Areas"
             };
 
+            _areasLayer.Opacity= 0.3;
+
             var tileLayer = OpenStreetMap.CreateTileLayer("AxxonSoft_OSM/1.0 (1997denic@gmail.com)");
             _mapControl.Map.Layers.Add(tileLayer);
             _mapControl.Map.Layers.Add(_areasLayer);
             _mapControl.Map.Layers.Add(_pointsLayer);
 
             _mapControl.Map.Widgets.Clear();
-            var mercator = SphericalMercator.FromLonLat(28.02, 53.31);
-            _mapControl.Map.Navigator.CenterOnAndZoomTo(new MPoint(mercator.x, mercator.y), 2000, 0000);
         }
 
         private static IStyle CreatePointStyle(MapPoint point)
@@ -64,14 +69,43 @@ namespace AxxonSoft_OSM_.Services
         {
             return new VectorStyle
             {
-                Fill = new Brush(new Color(area.FillColor.R, area.FillColor.G, area.FillColor.B, 128)),
-                Outline = new Pen(new Color(area.BorderColor.R, area.BorderColor.G, area.BorderColor.B, 128), 2),
+                Fill = new Brush(new Color(area.FillColor.R, area.FillColor.G, area.FillColor.B)),
+                Outline = new Pen(new Color(area.BorderColor.R, area.BorderColor.G, area.BorderColor.B), 2),
             };
         }
 
-        public void AddPoint(MapPoint point)
+        public bool IsValidCoordinate(double latitude, double longitude)
         {
+            if (latitude < MIN_LATITUDE || latitude > MAX_LATITUDE)
+            {
+                Console.WriteLine($"Широта {latitude:F6} выходит за пределы карты ({MIN_LATITUDE} до {MAX_LATITUDE})");
+                return false;
+            }
+
+            if (longitude < MIN_LONGITUDE || longitude > MAX_LONGITUDE)
+            {
+                Console.WriteLine($"Долгота {longitude:F6} выходит за пределы карты ({MIN_LONGITUDE} до {MAX_LONGITUDE})");
+                return false;
+            }
+
+            if (double.IsNaN(latitude) || double.IsNaN(longitude))
+            {
+                Console.WriteLine($"Координаты содержат NaN значения");
+                return false;
+            }
+
+            return true;
+        }
+
+        public MapPoint AddPoint(MapPoint point)
+        {
+            if (!IsValidCoordinate(point.Latitude, point.Longitude))
+            {
+                Console.WriteLine($"Не удалось добавить точку {point.Name}: координаты вне границ карты");
+                return null;
+            }
             var mpoint = SphericalMercator.FromLonLat(point.Longitude, point.Latitude).ToMPoint();
+            
             var feature = new PointFeature(mpoint);
 
             feature.Styles.Add(CreatePointStyle(point));
@@ -80,6 +114,8 @@ namespace AxxonSoft_OSM_.Services
             point.Feature = feature;
             _pointsLayer.DataHasChanged();
             _mapControl.Refresh();
+
+            return point;
         }
 
         public void UpdatePointStyle(MapPoint point)
@@ -109,8 +145,8 @@ namespace AxxonSoft_OSM_.Services
 
         public IFeature? FindPointAtLocation(double lat, double lon, double pixelTolerance = 10)
         {
-            var targetPoint = SphericalMercator.FromLonLat(lon, lat).ToMPoint();
-            var targetScreen = _mapControl.Map.Navigator.Viewport.WorldToScreen(targetPoint);
+            var targetPoint = SphericalMercator.FromLonLat(lon, lat);
+            var targetScreen = _mapControl.Map.Navigator.Viewport.WorldToScreen(targetPoint.ToMPoint());
 
             foreach (var feature in _pointsLayer.GetFeatures())
             {
@@ -204,6 +240,14 @@ namespace AxxonSoft_OSM_.Services
             _mapControl.Refresh();
 
             Console.WriteLine($"Камера восстановлена: X={camera.CenterX:F2}, Y={camera.CenterY:F2}, Zoom={camera.Resolution:F2}");
+        }
+
+        public void CenterOn(MapPoint point)
+        {
+            if (point == null) return;
+            var mercator = SphericalMercator.FromLonLat(point.Longitude, point.Latitude);
+            //_mapControl.Map.Navigator.CenterOn(mercator.x, mercator.y);
+            _mapControl.Map.Navigator.CenterOnAndZoomTo(new MPoint(mercator.x, mercator.y), _mapControl.Map.Navigator.Viewport.Resolution, 1000);
         }
     }
 }

@@ -1,0 +1,46 @@
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                   xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    
+    <ResourceDictionary.ThemeDictionaries>
+        <!-- ÑÂÅÒËÀß òåìà -->
+        <ResourceDictionary x:Key="Light">
+            <SolidColorBrush x:Key="PrimaryTextBrush">#212121</SolidColorBrush>
+            <SolidColorBrush x:Key="SecondaryTextBrush">#757575</SolidColorBrush>
+            <SolidColorBrush x:Key="BackgroundBrush">#FAFAFA</SolidColorBrush>
+            <SolidColorBrush x:Key="CardBackgroundBrush">#FFFFFF</SolidColorBrush>
+            <SolidColorBrush x:Key="BorderBrush">#E0E0E0</SolidColorBrush>
+
+            <SolidColorBrush x:Key="AccentBrush">#007ACC</SolidColorBrush>
+
+            <SolidColorBrush x:Key="ButtonBackgroundBrush">#F5F5F5</SolidColorBrush>
+            <SolidColorBrush x:Key="ButtonHoverBrush">#E0E0E0</SolidColorBrush>
+
+            <SolidColorBrush x:Key="SuccessBrush">#81C784</SolidColorBrush>
+            <SolidColorBrush x:Key="HoverSuccessBrush">#70AD73</SolidColorBrush>
+
+            <SolidColorBrush x:Key="CancelBrush">#C75656</SolidColorBrush>
+            <SolidColorBrush x:Key="HoverCancelBrush">#AD4B4B</SolidColorBrush>
+        </ResourceDictionary>
+        
+        <!-- ÒÅÌÍÀß òåìà -->
+        <ResourceDictionary x:Key="Dark">
+            <SolidColorBrush x:Key="PrimaryTextBrush">#FFFFFF</SolidColorBrush>
+            <SolidColorBrush x:Key="SecondaryTextBrush">#B0B0B0</SolidColorBrush>
+            <SolidColorBrush x:Key="BackgroundBrush">#1E1E1E</SolidColorBrush>
+            <SolidColorBrush x:Key="CardBackgroundBrush">#2D2D30</SolidColorBrush>
+            <SolidColorBrush x:Key="BorderBrush">#3E3E42</SolidColorBrush>
+
+            <SolidColorBrush x:Key="AccentBrush">#4FC3F7</SolidColorBrush>
+
+            <SolidColorBrush x:Key="ButtonBackgroundBrush">#3E3E42</SolidColorBrush>
+            <SolidColorBrush x:Key="ButtonHoverBrush">#505054</SolidColorBrush>
+
+            <SolidColorBrush x:Key="SuccessBrush">#00B200</SolidColorBrush>
+            <SolidColorBrush x:Key="HoverSuccessBrush">#009900</SolidColorBrush>
+
+            <SolidColorBrush x:Key="CancelBrush">#CC0000</SolidColorBrush>
+            <SolidColorBrush x:Key="HoverCancelBrush">#990000</SolidColorBrush>
+        </ResourceDictionary>
+    </ResourceDictionary.ThemeDictionaries>
+    
+</ResourceDictionary>
