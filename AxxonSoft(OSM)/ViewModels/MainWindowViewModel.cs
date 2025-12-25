@@ -1,6 +1,10 @@
-﻿using Avalonia.Input;
+﻿using Avalonia;
+using Avalonia.Controls;
+using Avalonia.Input;
 using Avalonia.Markup.Xaml.MarkupExtensions;
 using Avalonia.Media;
+using Avalonia.Platform.Storage;
+using Avalonia.Styling;
 using AxxonSoft_OSM_.Models;
 using AxxonSoft_OSM_.Models.DataModels;
 using AxxonSoft_OSM_.Services;
@@ -8,9 +12,11 @@ using AxxonSoft_OSM_.Views;
 using Mapsui.Projections;
 using Mapsui.UI.Avalonia;
 using System;
+using Avalonia.Platform.Storage;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
+using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Windows.Input;
@@ -23,9 +29,11 @@ namespace AxxonSoft_OSM_.ViewModels
         private MapPoint? _selectedPoint;
         private MapArea? _selectedArea;
         private bool _isInAreaMode;
+        private bool _isDarkTheme;
         private List<MapPoint> _tempAreaPoints = new List<MapPoint>();
 
         private readonly DataService _dataService;
+        private AppSettings _appSettings;
 
         public ObservableCollection<MapPoint> Points { get; } = new ObservableCollection<MapPoint>();
         public ObservableCollection<MapArea> Areas { get; } = new ObservableCollection<MapArea>();
@@ -65,6 +73,7 @@ namespace AxxonSoft_OSM_.ViewModels
                 CancelAreaCommand.RaiseCanExecuteChanged();
             }
         }
+        public Window OwnerWindow;
 
         //Коммнады для UI
         public RelayCommand DeleteSelectedPointCommand { get; }
@@ -77,6 +86,12 @@ namespace AxxonSoft_OSM_.ViewModels
         public RelayCommand DeleteSelectedAreaCommand { get; }
         public RelayCommand ClearAllAreasCommand { get; }
         public RelayCommand SaveDataCommand { get; }
+        public RelayCommand NewFile { get; }
+        public RelayCommand OpenFile {  get; }
+        public RelayCommand SaveFile { get; }
+        public RelayCommand SaveFileToPath {  get; }
+        public RelayCommand ToDarkTheme { get; }
+        public RelayCommand ToLightTheme { get; }
 
         public MainWindowViewModel(MapService mapService)
         {
@@ -113,13 +128,37 @@ namespace AxxonSoft_OSM_.ViewModels
                 execute: ClearAllAreas,
                 canExecute: () => Areas.Count > 0
             );
+            ToDarkTheme = new RelayCommand(
+                execute: SetDarkTheme,
+                canExecute: () => !_isDarkTheme
+            );
+            ToLightTheme = new RelayCommand(
+                execute: SetLightTheme,
+                canExecute: () => _isDarkTheme
+            );
+            NewFile = new RelayCommand(
+                execute: CreateNewFile,
+                canExecute: () => true
+            );
+            OpenFile = new RelayCommand(
+                execute: ShowFindFileDialog,
+                canExecute: () => true
+            );
+            SaveFile = new RelayCommand(
+                execute: SaveDataAsync,
+                canExecute: () => true
+            );
+            SaveFileToPath = new RelayCommand(
+                execute: ShowSaveFileDialog,
+                canExecute: () => true
+            );
 
             Points.CollectionChanged += (s, e) => ClearAllPointsCommand.RaiseCanExecuteChanged();
             Areas.CollectionChanged += (s, e) => ClearAllAreasCommand.RaiseCanExecuteChanged();
 
-            _ = LoadDataAsync();
+            LoadSettings();
         }
-
+        //События карты
         public void HandleMapPointerPressed(PointerPressedEventArgs e, object? mapControl)
         {
             if (mapControl is Mapsui.UI.Avalonia.MapControl myMapControl)
@@ -149,7 +188,12 @@ namespace AxxonSoft_OSM_.ViewModels
                 }
             }
         }
-
+        public async Task SaveBeforeExitAsync()
+        {
+            SaveDataAsync();
+            await SaveSettingsAsync();
+        }
+        //Точки
         private async void AddPoint(double lat, double lon)
         {
             if (!_mapService.IsValidCoordinate(lat, lon)) 
@@ -195,7 +239,7 @@ namespace AxxonSoft_OSM_.ViewModels
             Points.Clear();
             SelectedPoint = null;
         }
-
+        //Области
         private void StartAreaMode()
         {
             IsInAreaMode = true;
@@ -263,14 +307,11 @@ namespace AxxonSoft_OSM_.ViewModels
 
         private void ClearAllAreas()
         {
-            foreach (var area in Areas.ToList())
-            {
-                _mapService.RemoveArea(area);
-            }
+            _mapService.ClearAllAreas();
             Areas.Clear();
             SelectedArea = null;
         }
-
+        //Диалоги
         private async Task<MapPoint?> ShowPointEditDialogAsync(MapPoint point)
         {
             var tcs = new TaskCompletionSource<MapPoint?>();
@@ -307,12 +348,24 @@ namespace AxxonSoft_OSM_.ViewModels
             window.Show();
             return await tcs.Task;
         }
-
-        public async Task SaveBeforeExitAsync()
+        //Данные
+        public async Task LoadSettings()
         {
-            await SaveDataAsync();
+            _appSettings = await _dataService.LoadSettingsAsync();
+
+            if (_appSettings.Theme == "Dark")
+                SetDarkTheme();
+            else SetLightTheme();
+
+            _ = LoadDataFromFileAsync(_appSettings.LastSaveDirectory);
         }
-        private async Task SaveDataAsync()
+        public async Task SaveSettingsAsync()
+        {
+            _appSettings.Theme = _isDarkTheme ? "Dark" : "Light";
+
+            await _dataService.SaveSettingsAsync(_appSettings);
+        }
+        private async void SaveDataAsync()
         {
             try
             {
@@ -352,7 +405,21 @@ namespace AxxonSoft_OSM_.ViewModels
                     Areas = areasToSave
                 };
 
-                await _dataService.SaveDataAsync(saveData);
+                string savePath;
+                if (!string.IsNullOrEmpty(_appSettings.LastSaveDirectory))
+                {
+                    savePath = _appSettings.LastSaveDirectory;
+                }
+                else
+                {
+                    // Если путь не указан, открываем диалог сохранения
+                    ShowSaveFileDialog();
+                    return;
+                }
+
+                _appSettings.LastSaveDirectory = savePath;
+
+                await _dataService.SaveDataAsync(saveData,_appSettings.LastSaveDirectory);
 
                 Console.WriteLine($"Успешно сохранено {pointsToSave.Count} точек");
             }
@@ -361,14 +428,99 @@ namespace AxxonSoft_OSM_.ViewModels
                 Console.WriteLine($"Ошибка в SaveDataAsync: {ex.Message}");
             }
         }
+        //Файлы
+        private async void ShowFindFileDialog()
+        {
+            try
+            {
+                if (OwnerWindow == null)
+                {
+                    Debug.WriteLine("OwnerWindow is null");
+                    return;
+                }
 
-        private async Task LoadDataAsync()
+                // Получаем TopLevel из окна
+                var topLevel = TopLevel.GetTopLevel(OwnerWindow);
+                if (topLevel == null)
+                {
+                    Debug.WriteLine("TopLevel is null");
+                    return;
+                }
+
+                // Настройки диалога
+                var options = new FilePickerOpenOptions
+                {
+                    Title = "Открыть файл проекта",
+                    AllowMultiple = false,
+                    FileTypeFilter = new FilePickerFileType[]
+                    {
+                new("JSON файлы") { Patterns = new[] { "*.json" } },
+                new("Все файлы") { Patterns = new[] { "*.*" } }
+                    }
+                };
+
+                // Открываем диалог выбора файла
+                var files = await topLevel.StorageProvider.OpenFilePickerAsync(options);
+
+                if (files.Count >= 1)
+                {
+                    var selectedFile = files[0];
+                    var filePath = selectedFile.Path.LocalPath;
+
+                    Debug.WriteLine($"Выбран файл: {filePath}");
+
+                    // Проверяем расширение файла
+                    if (!Path.GetExtension(filePath).Equals(".json", StringComparison.OrdinalIgnoreCase))
+                    {
+                        Debug.WriteLine("Выбранный файл не является JSON файлом");
+                        return;
+                    }
+
+                    // Загружаем данные из выбранного файла
+                    await LoadDataFromFileAsync(filePath);
+
+                    // Обновляем настройки
+                    _appSettings.LastSaveDirectory = filePath;
+                    await SaveSettingsAsync();
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Ошибка при открытии диалога файла: {ex.Message}");
+            }
+        }
+        private async void ShowSaveFileDialog()
+        {
+            if (OwnerWindow == null)
+                return;
+
+            var topLevel = TopLevel.GetTopLevel(OwnerWindow);
+            if (topLevel == null)
+                return;
+
+            var options = new FilePickerSaveOptions
+            {
+                Title = "Сохранить проект",
+                FileTypeChoices = new FilePickerFileType[]
+                {
+            new("JSON файлы") { Patterns = new[] { "*.json" } },
+            new("Все файлы") { Patterns = new[] { "*.*" } }
+                },
+                DefaultExtension = "json",
+                ShowOverwritePrompt = true
+            };
+
+            var file = await topLevel.StorageProvider.SaveFilePickerAsync(options);
+            if (file == null) return;
+            SaveDataToPathAsync(file.Path.LocalPath);
+        }
+        private async Task LoadDataFromFileAsync(String Path)
         {
             try
             {
                 Console.WriteLine("Загрузка данных...");
 
-                var saveData = await _dataService.LoadDataAsync();
+                var saveData = await _dataService.LoadDataAsync(Path);
                 if (saveData == null)
                 {
                     Console.WriteLine("Данные не загружены (null)");
@@ -376,10 +528,8 @@ namespace AxxonSoft_OSM_.ViewModels
                 }
 
                 // Очищаем текущие данные
-                Points.Clear();
-                Areas.Clear();
-                _mapService.ClearAllPoints();
                 ClearAllAreas();
+                ClearAllPoints();
 
                 Console.WriteLine($"Загрузка {saveData.Points.Count} точек...");
 
@@ -445,6 +595,70 @@ namespace AxxonSoft_OSM_.ViewModels
             {
                 Console.WriteLine($"Ошибка в LoadDataAsync: {ex.Message}");
             }
+        }
+        private async Task SaveDataToPathAsync(string filePath)
+        {
+            try
+            {
+                var pointsToSave = Points.Select(p => new PointData
+                {
+                    Longitude = p.Longitude,
+                    Latitude = p.Latitude,
+                    Name = p.Name,
+                    Color = p.PointColor.ToString(),
+                    Size = p.PointSize
+                }).ToList();
+
+                var areasToSave = Areas.Select(a => new AreaData
+                {
+                    Name = a.Name,
+                    Points = a.Points.Select(p => new AreaPointData
+                    {
+                        Longitude = p.Longitude,
+                        Latitude = p.Latitude
+                    }).ToList(),
+                    FillColor = a.FillColor.ToString(),
+                    BorderColor = a.BorderColor.ToString()
+                }).ToList();
+
+                var cameraToSave = _mapService.GetCameraState();
+
+                var saveData = new SaveData
+                {
+                    Camera = cameraToSave,
+                    Points = pointsToSave,
+                    Areas = areasToSave
+                };
+
+                await _dataService.SaveDataAsync(saveData, filePath);
+
+                // Обновляем настройки
+                _appSettings.LastSaveDirectory = filePath;
+                await SaveSettingsAsync();
+
+                Console.WriteLine($"Проект сохранен как: {filePath}");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Ошибка сохранения: {ex.Message}");
+            }
+        }
+        private void CreateNewFile()
+        {
+            _appSettings.LastSaveDirectory = "";
+            ClearAllAreas();
+            ClearAllPoints();
+        }
+        //Установка Темы приложения
+        private void SetDarkTheme()
+        {
+            Application.Current.RequestedThemeVariant = ThemeVariant.Dark;
+            _isDarkTheme = true;
+        }
+        private void SetLightTheme()
+        {
+            Application.Current.RequestedThemeVariant = ThemeVariant.Light;
+            _isDarkTheme = false;
         }
     }
 }

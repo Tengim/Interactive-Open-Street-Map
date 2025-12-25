@@ -143,6 +143,13 @@ namespace AxxonSoft_OSM_.Services
             _mapControl.Refresh();
         }
 
+        public void ClearAllAreas()
+        {
+            _areasLayer.Clear();
+            _pointsLayer.DataHasChanged();
+            _mapControl.Refresh();
+        }
+
         public IFeature? FindPointAtLocation(double lat, double lon, double pixelTolerance = 10)
         {
             var targetPoint = SphericalMercator.FromLonLat(lon, lat);

@@ -19,6 +19,8 @@ namespace AxxonSoft_OSM_.Views
             DataContext = _viewModel;
 
             this.Closing += MainWindow_Closing;
+
+            _viewModel.OwnerWindow = this;
         }
 
         private void MapPointerPressed(object? sender, PointerPressedEventArgs e)

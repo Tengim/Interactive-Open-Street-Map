@@ -18,12 +18,31 @@
             <ColumnDefinition/>
             <ColumnDefinition Width="250"/>
         </Grid.ColumnDefinitions>
+        <Grid.RowDefinitions>
+			<RowDefinition Height="40"/>
+            <RowDefinition/>
+        </Grid.RowDefinitions>
+
+        <DockPanel>
+			<Menu DockPanel.Dock="Top">
+				<MenuItem Header="Файл">
+					<MenuItem Header="Новый" Command="{Binding NewFile }"/>
+					<MenuItem Header="Открыть" Command="{Binding OpenFile }"/>
+                    <MenuItem Header="Сохранить" Command="{Binding SaveFile }"/>
+                    <MenuItem Header="Сохранить в новый файл" Command="{Binding SaveFileToPath }"/>
+                </MenuItem>
+                <MenuItem Header="Вид">
+					<MenuItem Header="Темная тема" Command="{Binding ToDarkTheme}"/>
+                    <MenuItem Header="Светлая тема" Command="{Binding ToLightTheme}"/>
+                </MenuItem>
+            </Menu>
+        </DockPanel>
         
         <!-- Карта -->
-        <mapsui:MapControl Grid.Column="0" x:Name="MyMapControl" PointerPressed="MapPointerPressed"/>
+        <mapsui:MapControl Grid.Row="1" Grid.Column="0" x:Name="MyMapControl" PointerPressed="MapPointerPressed"/>
         
         <!-- Панель управления -->
-        <Border Grid.Column="1"
+        <Border Grid.Column="1" Grid.RowSpan="2"
                 BorderThickness="1,0,0,0">
             <StackPanel Margin="10">
                 <!-- Режим создания области -->
