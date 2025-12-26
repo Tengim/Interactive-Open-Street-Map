@@ -2,10 +2,12 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        mc:Ignorable="d" d:DesignWidth="400" d:DesignHeight="500"
+        mc:Ignorable="d" d:DesignWidth="400" d:DesignHeight="510"
         x:Class="AxxonSoft_OSM_.PointEditDialog"
         Title="PointEditDialog"
-        Width="400" Height="500"
+        Width="400" Height="510"
+        CanResize="False"
+
         x:CompileBindings="False">
 
     <ScrollViewer>
@@ -84,11 +86,11 @@
                 <Button Classes="btn-cancel"
                         Content="Отмена" 
                         MinWidth="80"
-                        Command="{Binding CancelCommand}"/>
+                        Click="OnCancelClicked"/>
                 <Button Classes="btn-success"
                         Content="Сохранить"
                         MinWidth="80"
-                        Command="{Binding SaveCommand}"/>
+                        Click="OnSaveClicked"/>
             </StackPanel>
         </StackPanel>
     </ScrollViewer>

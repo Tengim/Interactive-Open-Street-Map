@@ -49,26 +49,14 @@ public class AreaEditDialogViewModel : ViewModelBase
         }
     }
 
-    public RelayCommand SaveCommand { get; }
-    public RelayCommand CancelCommand { get; }
-
     public AreaEditDialogViewModel(MapArea area)
     {
         Area = area;
-
-        SaveCommand = new RelayCommand(Save);
-        CancelCommand = new RelayCommand(Cancel);
     }
 
-    private void Save()
+    public MapArea GetResult()
     {
-        Area = _area;
-        CloseDialog?.Invoke(Area);
-    }
-
-    private void Cancel()
-    {
-        CloseDialog?.Invoke(null);
+        return Area;
     }
 
     public event Action<MapArea?>? CloseDialog;

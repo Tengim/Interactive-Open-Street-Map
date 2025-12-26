@@ -7,6 +7,7 @@
         xmlns:models="clr-namespace:AxxonSoft_OSM_.Models"
         mc:Ignorable="d" d:DesignWidth="1000" d:DesignHeight="580"
         Width="1000" Height="580"
+        MinWidth="500" MinHeight="580"
         xmlns:conv="clr-namespace:AxxonSoft_OSM_.Converters"
         x:Class="AxxonSoft_OSM_.Views.MainWindow"
         Title="AxxonSoft_OSM_"
@@ -16,7 +17,7 @@
     <Grid Background="{DynamicResource BackgroundBrush}">
         <Grid.ColumnDefinitions>
             <ColumnDefinition/>
-            <ColumnDefinition Width="250"/>
+            <ColumnDefinition Width="280"/>
         </Grid.ColumnDefinitions>
         <Grid.RowDefinitions>
 			<RowDefinition Height="40"/>
@@ -39,7 +40,7 @@
         </DockPanel>
         
         <!-- Карта -->
-        <mapsui:MapControl Grid.Row="1" Grid.Column="0" x:Name="MyMapControl" PointerPressed="MapPointerPressed"/>
+        <mapsui:MapControl Grid.Row="1" Grid.Column="0" x:Name="MyMapControl" PointerMoved="MapPointerMoved" PointerReleased="MapPointerReleased" PointerPressed="MapPointerPressed"/>
         
         <!-- Панель управления -->
         <Border Grid.Column="1" Grid.RowSpan="2"

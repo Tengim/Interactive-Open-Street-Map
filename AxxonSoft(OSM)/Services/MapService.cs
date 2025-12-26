@@ -253,8 +253,13 @@ namespace AxxonSoft_OSM_.Services
         {
             if (point == null) return;
             var mercator = SphericalMercator.FromLonLat(point.Longitude, point.Latitude);
-            //_mapControl.Map.Navigator.CenterOn(mercator.x, mercator.y);
             _mapControl.Map.Navigator.CenterOnAndZoomTo(new MPoint(mercator.x, mercator.y), _mapControl.Map.Navigator.Viewport.Resolution, 1000);
+        }
+        public void CenterAndZoomOn(MapPoint point,double Resolution)
+        {
+            if (point == null) return;
+            var mercator = SphericalMercator.FromLonLat(point.Longitude, point.Latitude);
+            _mapControl.Map.Navigator.CenterOnAndZoomTo(new MPoint(mercator.x, mercator.y), Resolution, 1000);
         }
     }
 }

@@ -314,7 +314,8 @@ namespace AxxonSoft_OSM_.ViewModels
         //Диалоги
         private async Task<MapPoint?> ShowPointEditDialogAsync(MapPoint point)
         {
-            var tcs = new TaskCompletionSource<MapPoint?>();
+            if (OwnerWindow == null)
+                return null;
 
             var viewModel = new PointEditDialogViewModel(point);
             var window = new PointEditDialog
@@ -322,33 +323,23 @@ namespace AxxonSoft_OSM_.ViewModels
                 DataContext = viewModel
             };
 
-            viewModel.CloseDialog += (result) =>
-            {
-                tcs.SetResult(result);
-                window.Close();
-            };
-
-            window.Show();
-
-            return await tcs.Task;
+            // Используем ShowDialog для модального диалога
+            var result = await window.ShowDialog<MapPoint?>(OwnerWindow);
+            return result;
         }
         private async Task<MapArea?> ShowAreaEditDialogAsync(MapArea area)
         {
-            var tcs = new TaskCompletionSource<MapArea?>();
+            if (OwnerWindow == null)
+                return null;
 
             var viewModel = new AreaEditDialogViewModel(area);
             var window = new AreaEditDialog { DataContext = viewModel };
 
-            viewModel.CloseDialog += (result) =>
-            {
-                tcs.SetResult(result);
-                window.Close();
-            };
-
-            window.Show();
-            return await tcs.Task;
+            // Используем ShowDialog для модального диалога
+            var result = await window.ShowDialog<MapArea?>(OwnerWindow);
+            return result;
         }
-        //Данные
+        
         public async Task LoadSettings()
         {
             _appSettings = await _dataService.LoadSettingsAsync();
@@ -643,8 +634,34 @@ namespace AxxonSoft_OSM_.ViewModels
                 Console.WriteLine($"Ошибка сохранения: {ex.Message}");
             }
         }
+        public async Task HandleMapClickAsync(double screenX, double screenY, MapControl mapControl)
+        {
+            var (lon, lat) = _mapService.ScreenToWorldCoordinates(screenX, screenY);
+
+            if (IsInAreaMode)
+            {
+                AddTempAreaPoint(lat, lon);
+            }
+            else
+            {
+                var existingFeature = _mapService.FindPointAtLocation(lat, lon);
+
+                if (existingFeature != null)
+                {
+                    var pointToRemove = Points.FirstOrDefault(p => p.Feature == existingFeature);
+                    RemovePointByFeature(pointToRemove);
+                    Debug.WriteLine("Point removed.");
+                }
+                else
+                {
+                    AddPoint(lat, lon);
+                    Debug.WriteLine("Point added.");
+                }
+            }
+        }
         private void CreateNewFile()
         {
+            _mapService.CenterAndZoomOn(new MapPoint(0,0),80000);
             _appSettings.LastSaveDirectory = "";
             ClearAllAreas();
             ClearAllPoints();

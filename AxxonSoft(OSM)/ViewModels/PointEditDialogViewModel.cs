@@ -52,25 +52,15 @@ public class PointEditDialogViewModel : ViewModelBase
     }
     public double Longitude => _point.Longitude;
     public double Latitude => _point.Latitude;
-    public RelayCommand SaveCommand { get; }
-    public RelayCommand CancelCommand { get; }
 
     public PointEditDialogViewModel(MapPoint point)
     {
         Point = point;
-
-        SaveCommand = new RelayCommand(Save);
-        CancelCommand = new RelayCommand(Cancel);
     }
 
-    private void Save()
+    public MapPoint GetResult()
     {
-        CloseDialog?.Invoke(Point);
-    }
-
-    private void Cancel()
-    {
-        CloseDialog?.Invoke(null);
+        return Point;
     }
 
     public event Action<MapPoint?>? CloseDialog;

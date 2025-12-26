@@ -6,6 +6,7 @@
         x:Class="AxxonSoft_OSM_.AreaEditDialog"
         d:DesignWidth="300" d:DesignHeight="340"
         Width="300" Height="340"
+        CanResize="False"
         Title="AreaEditDialog"
         x:CompileBindings="False">
 
@@ -31,11 +32,11 @@
                     Margin="0,20,0,0">
             <Button Classes="btn-cancel"
                     Content="Отмена" 
-                    Command="{Binding CancelCommand}"
+                    Click="OnCancelClicked"
                     MinWidth="80"/>
             <Button Classes="btn-success"
                     Content="Сохранить" 
-                    Command="{Binding SaveCommand}"
+                    Click="OnSaveClicked"
                     MinWidth="80"/>
         </StackPanel>
     </StackPanel>

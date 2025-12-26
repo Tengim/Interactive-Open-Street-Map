@@ -13,7 +13,9 @@ namespace AxxonSoft_OSM_.Models
 
         public object? Feature { get; set; }
 
-        public string DisplayText => $"{Name} ({Points.Count} точек)";
+        public string DisplayText => string.IsNullOrEmpty(Name)
+            ? $"Без имени ({Points.Count} точек)"
+            : $"{Name} ({Points.Count} точек)";
 
         public bool IsComplete => Points.Count >= 3;
     }
