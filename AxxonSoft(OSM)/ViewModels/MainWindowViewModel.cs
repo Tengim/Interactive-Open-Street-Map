@@ -4,7 +4,6 @@ using Avalonia.Input;
 using Avalonia.Markup.Xaml.MarkupExtensions;
 using Avalonia.Media;
 using Avalonia.Platform.Storage;
-using Avalonia.Platform.Storage;
 using Avalonia.Styling;
 using AxxonSoft_OSM_.Models;
 using AxxonSoft_OSM_.Models.DataModels;
@@ -50,9 +49,9 @@ namespace AxxonSoft_OSM_.ViewModels
                 _mapService.CenterOnPoint(SelectedPoint);
                 OnPropertyChanged();
                 DeleteSelectedPointCommand.RaiseCanExecuteChanged();
+                EditSelectedPointCommand.RaiseCanExecuteChanged();
             }
         }
-
         public MapArea? SelectedArea
         {
             get => _selectedArea;
@@ -62,9 +61,11 @@ namespace AxxonSoft_OSM_.ViewModels
                 _mapService.CenterOnArea(SelectedArea);
                 OnPropertyChanged();
                 DeleteSelectedAreaCommand.RaiseCanExecuteChanged();
+                EditSelectedAreaCommand.RaiseCanExecuteChanged();
             }
         }
 
+        public MapPoint FirtAreaPoint;
         public bool IsInAreaMode
         {
             get => _isInAreaMode;
@@ -96,6 +97,8 @@ namespace AxxonSoft_OSM_.ViewModels
         public RelayCommand SaveFileToPath {  get; }
         public RelayCommand ToDarkTheme { get; }
         public RelayCommand ToLightTheme { get; }
+        public RelayCommand EditSelectedPointCommand { get; }
+        public RelayCommand EditSelectedAreaCommand { get; }
 
         public MainWindowViewModel(MapService mapService, Window window)
         {
@@ -112,11 +115,14 @@ namespace AxxonSoft_OSM_.ViewModels
                 execute: DeleteSelectedPoint,
                 canExecute: () => SelectedPoint != null
             );
+            EditSelectedPointCommand = new RelayCommand(
+                execute: EditSelectedPoint,
+                canExecute: () => SelectedPoint != null
+            );
             ClearAllPointsCommand = new RelayCommand(
                 execute: ClearAllPoints,
                 canExecute: () => Points.Count > 0
             );
-
             StartAreaCommand = new RelayCommand(
                 execute: StartAreaMode,
                 canExecute: () => !IsInAreaMode
@@ -136,6 +142,10 @@ namespace AxxonSoft_OSM_.ViewModels
             ClearAllAreasCommand = new RelayCommand(
                 execute: ClearAllAreas,
                 canExecute: () => Areas.Count > 0
+            );
+            EditSelectedAreaCommand = new RelayCommand(
+                execute: EditSelectedArea,
+                canExecute: () => SelectedArea != null
             );
             ToDarkTheme = new RelayCommand(
                 execute: SetDarkTheme,
@@ -167,14 +177,21 @@ namespace AxxonSoft_OSM_.ViewModels
 
             LoadSettings();
         }
+        
         //События карты
         public async Task HandleMapClickAsync(double screenX, double screenY, MapControl mapControl)
         {
             var (lon, lat) = _mapService.ScreenToWorldCoordinates(screenX, screenY);
 
+
             if (IsInAreaMode)
             {
-                AddTempAreaPoint(lat, lon);
+                MapPoint point = _mapService.FindPointAtLocation(lat, lon, _tempAreaPoints);
+                if (point != null)
+                {
+                    if(point == FirtAreaPoint)
+                        FinishArea();
+                }else AddTempAreaPoint(lat, lon);
             }
             else
             {
@@ -196,6 +213,7 @@ namespace AxxonSoft_OSM_.ViewModels
             SaveDataAsync();
             await SaveSettingsAsync();
         }
+
         //Точки
         private async void AddPoint(double lat, double lon)
         {
@@ -211,7 +229,6 @@ namespace AxxonSoft_OSM_.ViewModels
                 Points.Add(result);
             }
         }
-
         private void RemovePointByFeature(MapPoint point)
         {
             _mapService.RemovePoint(point.Feature);
@@ -227,7 +244,6 @@ namespace AxxonSoft_OSM_.ViewModels
                 }
             }
         }
-
         private void DeleteSelectedPoint()
         {
             if (SelectedPoint?.Feature != null)
@@ -235,13 +251,29 @@ namespace AxxonSoft_OSM_.ViewModels
                 ShowPointDeleteDialog(SelectedPoint);
             }
         }
-
         private void ClearAllPoints()
         {
             _mapService.ClearAllPoints();
             Points.Clear();
             SelectedPoint = null;
         }
+        private async void EditSelectedPoint()
+        {
+            SelectedPoint = await ShowPointEditDialogAsync(SelectedPoint);
+            _mapService.UpdatePointStyle(SelectedPoint);
+            UpdatePointInList(SelectedPoint);
+        }
+        private void UpdatePointInList(MapPoint point)
+        {
+            var index = Points.IndexOf(point);
+            if (index >= 0)
+            {
+                // Удаляем и добавляем обратно для принудительного обновления
+                Points.RemoveAt(index);
+                Points.Insert(index, point);
+            }
+        }
+
         //Области
         private void StartAreaMode()
         {
@@ -249,7 +281,6 @@ namespace AxxonSoft_OSM_.ViewModels
             _tempAreaPoints.Clear();
             Debug.WriteLine("Режим создания области активирован");
         }
-
         private void AddTempAreaPoint(double lat, double lon)
         {
             if (!_mapService.IsValidCoordinate(lat, lon))
@@ -258,12 +289,14 @@ namespace AxxonSoft_OSM_.ViewModels
             var point = new MapPoint(lat, lon);
             _mapService.AddPoint(point);
 
+            if (FirtAreaPoint == null)
+                FirtAreaPoint = point;
+
             _tempAreaPoints.Add(point);
             FinishAreaCommand.RaiseCanExecuteChanged();
 
             Debug.WriteLine($"Добавлена точка области: {lat}, {lon} (всего: {_tempAreaPoints.Count})");
         }
-
         private async void FinishArea()
         {
             if (_tempAreaPoints.Count < 3) return;
@@ -272,6 +305,8 @@ namespace AxxonSoft_OSM_.ViewModels
             tempArea.Points.AddRange(_tempAreaPoints);
 
             var result = await ShowAreaEditDialogAsync(tempArea);
+
+            FirtAreaPoint = null;
 
             if (result != null)
             {
@@ -286,21 +321,19 @@ namespace AxxonSoft_OSM_.ViewModels
                 CancelArea();
             }
         }
-
         private void CancelArea()
         {
             _mapService.ClearTempAreaPoints(_tempAreaPoints);
             _tempAreaPoints.Clear();
             IsInAreaMode = false;
+            FirtAreaPoint = null;
             Debug.WriteLine("Создание области отменено");
         }
-
         private void RemoveArea(MapArea area)
         {
             _mapService.RemoveArea(area);
             Areas.Remove(area);
         }
-
         private void DeleteSelectedArea()
         {
             if (SelectedArea != null)
@@ -309,13 +342,28 @@ namespace AxxonSoft_OSM_.ViewModels
                 SelectedArea = null;
             }
         }
-
         private void ClearAllAreas()
         {
             _mapService.ClearAllAreas();
             Areas.Clear();
             SelectedArea = null;
         }
+        private async void EditSelectedArea()
+        {
+            SelectedArea = await ShowAreaEditDialogAsync(SelectedArea);
+            _mapService.UpdateAreaStyle(SelectedArea);
+            UpdateAreaInList(SelectedArea);
+        }
+        private void UpdateAreaInList(MapArea area)
+        {
+            var index = Areas.IndexOf(area);
+            if (index >= 0)
+            {
+                Areas.RemoveAt(index);
+                Areas.Insert(index, area);
+            }
+        }
+
         //Диалоги
         private async Task<MapPoint?> ShowPointEditDialogAsync(MapPoint point)
         {
@@ -328,8 +376,8 @@ namespace AxxonSoft_OSM_.ViewModels
                 DataContext = viewModel
             };
 
-            // Используем ShowDialog для модального диалога
             var result = await window.ShowDialog<MapPoint?>(OwnerWindow);
+            _mapService.RefreshMap();
             return result;
         }
         private async Task<MapArea?> ShowAreaEditDialogAsync(MapArea area)
@@ -340,14 +388,13 @@ namespace AxxonSoft_OSM_.ViewModels
             var viewModel = new AreaEditDialogViewModel(area);
             var window = new AreaEditDialog { DataContext = viewModel };
 
-            // Используем ShowDialog для модального диалога
             var result = await window.ShowDialog<MapArea?>(OwnerWindow);
             return result;
         }
-
         private async Task ShowPointDeleteDialog(MapPoint point)
         {
             if(point == null) return;
+
             bool confirmDelete = await _dialogService.ShowConfirmationDialogAsync(
                             "Подтверждение удаления",
                             $"Вы уверены, что хотите удалить точку:\n\"{point.Name}\"?",
@@ -377,7 +424,6 @@ namespace AxxonSoft_OSM_.ViewModels
                 Debug.WriteLine("Point removed.");
             }
         }
-
         public async Task LoadSettings()
         {
             _appSettings = await _dataService.LoadSettingsAsync();
@@ -400,7 +446,6 @@ namespace AxxonSoft_OSM_.ViewModels
             {
                 Console.WriteLine($"Начато сохранение {Points.Count} точек...");
 
-                // Сохраняем точки
                 var pointsToSave = Points.Select(p => new PointData
                 {
                     Longitude = p.Longitude,
@@ -410,7 +455,6 @@ namespace AxxonSoft_OSM_.ViewModels
                     Size = p.PointSize
                 }).ToList();
                 
-                // Сохраняем области
                 var areasToSave = Areas.Select(a => new AreaData
                 {
                     Name = a.Name,
@@ -423,10 +467,8 @@ namespace AxxonSoft_OSM_.ViewModels
                     BorderColor = a.BorderColor.ToString()
                 }).ToList();
 
-                // Сохраняем камеру
                 var cameraToSave = _mapService.GetCameraState();
 
-                // Создаем полный объект сохранения
                 var saveData = new SaveData
                 {
                     Camera = cameraToSave,
@@ -441,7 +483,6 @@ namespace AxxonSoft_OSM_.ViewModels
                 }
                 else
                 {
-                    // Если путь не указан, открываем диалог сохранения
                     ShowSaveFileDialog();
                     return;
                 }
@@ -457,6 +498,7 @@ namespace AxxonSoft_OSM_.ViewModels
                 Console.WriteLine($"Ошибка в SaveDataAsync: {ex.Message}");
             }
         }
+        
         //Файлы
         private async void ShowFindFileDialog()
         {
@@ -468,7 +510,6 @@ namespace AxxonSoft_OSM_.ViewModels
                     return;
                 }
 
-                // Получаем TopLevel из окна
                 var topLevel = TopLevel.GetTopLevel(OwnerWindow);
                 if (topLevel == null)
                 {
@@ -476,7 +517,6 @@ namespace AxxonSoft_OSM_.ViewModels
                     return;
                 }
 
-                // Настройки диалога
                 var options = new FilePickerOpenOptions
                 {
                     Title = "Открыть файл проекта",
@@ -488,7 +528,6 @@ namespace AxxonSoft_OSM_.ViewModels
                     }
                 };
 
-                // Открываем диалог выбора файла
                 var files = await topLevel.StorageProvider.OpenFilePickerAsync(options);
 
                 if (files.Count >= 1)
@@ -498,17 +537,14 @@ namespace AxxonSoft_OSM_.ViewModels
 
                     Debug.WriteLine($"Выбран файл: {filePath}");
 
-                    // Проверяем расширение файла
                     if (!Path.GetExtension(filePath).Equals(".json", StringComparison.OrdinalIgnoreCase))
                     {
                         Debug.WriteLine("Выбранный файл не является JSON файлом");
                         return;
                     }
 
-                    // Загружаем данные из выбранного файла
                     await LoadDataFromFileAsync(filePath);
 
-                    // Обновляем настройки
                     _appSettings.LastSaveDirectory = filePath;
                     await SaveSettingsAsync();
                 }
@@ -556,13 +592,11 @@ namespace AxxonSoft_OSM_.ViewModels
                     return;
                 }
 
-                // Очищаем текущие данные
                 ClearAllAreas();
                 ClearAllPoints();
 
                 Console.WriteLine($"Загрузка {saveData.Points.Count} точек...");
 
-                // Восстанавливаем точки
                 foreach (var savedPoint in saveData.Points)
                 {
                     try
@@ -588,7 +622,6 @@ namespace AxxonSoft_OSM_.ViewModels
                     }
                 }
 
-                // Восстанавливаем области
                 Console.WriteLine($"Загрузка {saveData.Areas.Count} областей...");
                 foreach (var savedArea in saveData.Areas)
                 {
@@ -614,7 +647,6 @@ namespace AxxonSoft_OSM_.ViewModels
                     }
                 }
 
-                // Восстанавливаем камеру
                 Console.WriteLine("Восстанавливаем состояние камеры...");
                 _mapService.SetCameraState(saveData.Camera);
 
@@ -661,7 +693,6 @@ namespace AxxonSoft_OSM_.ViewModels
 
                 await _dataService.SaveDataAsync(saveData, filePath);
 
-                // Обновляем настройки
                 _appSettings.LastSaveDirectory = filePath;
                 await SaveSettingsAsync();
 
@@ -679,6 +710,7 @@ namespace AxxonSoft_OSM_.ViewModels
             ClearAllAreas();
             ClearAllPoints();
         }
+        
         //Установка Темы приложения
         private void SetDarkTheme()
         {

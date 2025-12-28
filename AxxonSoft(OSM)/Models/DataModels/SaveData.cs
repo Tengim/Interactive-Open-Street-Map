@@ -16,7 +16,7 @@ namespace AxxonSoft_OSM_.Models.DataModels
     {
         public double CenterX { get; set; }
         public double CenterY { get; set; }
-        public double Resolution { get; set; } // Уровень масштабирования (zoom)
+        public double Resolution { get; set; }
         public double Rotation { get; set; }
     }
 
@@ -39,8 +39,8 @@ namespace AxxonSoft_OSM_.Models.DataModels
     {
         public string Name { get; set; } = string.Empty;
         public List<AreaPointData> Points { get; set; } = new List<AreaPointData>();
-        public string FillColor { get; set; } = "#80FF0000"; // Полупрозрачный красный
-        public string BorderColor { get; set; } = "#FFFF0000"; // Красный
+        public string FillColor { get; set; } = "#80FF0000";
+        public string BorderColor { get; set; } = "#FFFF0000";
     }
 
     public class ColorConverter : JsonConverter<Color>

@@ -5,9 +5,9 @@
         xmlns:mapsui="clr-namespace:Mapsui.UI.Avalonia;assembly=Mapsui.UI.Avalonia"
         xmlns:vm="clr-namespace:AxxonSoft_OSM_.ViewModels"
         xmlns:models="clr-namespace:AxxonSoft_OSM_.Models"
-        mc:Ignorable="d" d:DesignWidth="1000" d:DesignHeight="580"
-        Width="1000" Height="580"
-        MinWidth="500" MinHeight="580"
+        mc:Ignorable="d" d:DesignWidth="1000" d:DesignHeight="670"
+        Width="1000" Height="670"
+        MinWidth="500" MinHeight="670"
         xmlns:conv="clr-namespace:AxxonSoft_OSM_.Converters"
         x:Class="AxxonSoft_OSM_.Views.MainWindow"
         Title="AxxonSoft_OSM_"
@@ -101,6 +101,11 @@
                         Command="{Binding DeleteSelectedPointCommand}"
                         Margin="0,0,0,5"
                         HorizontalAlignment="Stretch"/>
+
+                <Button Content="Изменить выбранную точку"
+                        Command="{Binding EditSelectedPointCommand}"
+                        Margin="0,0,0,10"
+                        HorizontalAlignment="Stretch"/>
                 
                 <Button Content="Очистить все точки" 
                         Command="{Binding ClearAllPointsCommand}"
@@ -136,6 +141,11 @@
                         Margin="0,0,0,5"
                         HorizontalAlignment="Stretch"/>
                 
+                <Button Content="Изменить выбранную область"
+                        Command="{Binding EditSelectedAreaCommand}"
+                        Margin="0,0,0,10"
+                        HorizontalAlignment="Stretch"/>
+
                 <Button Content="Очистить все области" 
                         Command="{Binding ClearAllAreasCommand}"
                         Margin="0,0,0,10"

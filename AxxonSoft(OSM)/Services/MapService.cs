@@ -97,6 +97,12 @@ namespace AxxonSoft_OSM_.Services
             return true;
         }
 
+        public void RefreshMap()
+        {
+            _pointsLayer.DataHasChanged();
+            _mapControl.Refresh();
+        }
+
         public MapPoint AddPoint(MapPoint point)
         {
             if (!IsValidCoordinate(point.Latitude, point.Longitude))
@@ -117,7 +123,6 @@ namespace AxxonSoft_OSM_.Services
 
             return point;
         }
-
         public void UpdatePointStyle(MapPoint point)
         {
             if (point.Feature != null)
@@ -125,6 +130,17 @@ namespace AxxonSoft_OSM_.Services
                 point.Feature.Styles.Clear();
                 point.Feature.Styles.Add(CreatePointStyle(point));
                 _pointsLayer.DataHasChanged();
+                RefreshMap();
+            }
+        }
+        public void UpdateAreaStyle(MapArea area)
+        {
+            if (area.Feature is IFeature feature)
+            {
+                feature.Styles.Clear();
+                feature.Styles.Add(CreateAreaStyle(area));
+
+                _areasLayer.DataHasChanged();
                 _mapControl.Refresh();
             }
         }
@@ -288,7 +304,7 @@ namespace AxxonSoft_OSM_.Services
                 double resolutionX = width / viewportWidth;
                 double resolutionY = height / viewportHeight;
 
-                double resolution = Math.Max(resolutionX, resolutionY) * 1.2; // Добавляем отступ 20%
+                double resolution = Math.Max(resolutionX, resolutionY) * 1.2;
 
                 _mapControl.Map.Navigator.CenterOnAndZoomTo(
                     new MPoint(mercator.x, mercator.y),

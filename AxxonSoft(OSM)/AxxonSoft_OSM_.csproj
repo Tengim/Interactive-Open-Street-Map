@@ -6,6 +6,9 @@
     <BuiltInComInteropSupport>true</BuiltInComInteropSupport>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
+
+    <AssemblyName>AxxonSoft_OSM_</AssemblyName>
+    <RootNamespace>AxxonSoft_OSM_</RootNamespace>
   </PropertyGroup>
 
   <ItemGroup>

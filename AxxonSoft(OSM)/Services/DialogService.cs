@@ -89,9 +89,8 @@ public class DialogService : IDialogService
 
         dialog.Content = stackPanel;
 
-        // Показываем диалог и получаем результат
         await dialog.ShowDialog(_ownerWindow);
 
-        return result ?? false; // Возвращаем false если окно закрыто крестиком
+        return result ?? false;
     }
 }
