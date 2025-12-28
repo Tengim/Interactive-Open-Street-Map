@@ -89,9 +89,8 @@
                              Height="120">
                         <ListBox.ItemTemplate>
                             <DataTemplate x:DataType="models:MapPoint">
-                                <Border Background="Transparent"
-                                        Padding="5,3">
-                                    <TextBlock Text="{Binding DisplayText}" />
+                                <Border Padding="5,3">
+                                    <TextBlock Text="{Binding DisplayText}"/>
                                 </Border>
                             </DataTemplate>
                         </ListBox.ItemTemplate>

@@ -19,12 +19,11 @@ namespace AxxonSoft_OSM_.Views
             InitializeComponent();
 
             var mapService = new MapService(MyMapControl);
-            _viewModel = new MainWindowViewModel(mapService);
+            _viewModel = new MainWindowViewModel(mapService , this);
             DataContext = _viewModel;
 
             this.Closing += MainWindow_Closing;
 
-            _viewModel.OwnerWindow = this;
         }
 
         private void MapPointerPressed(object? sender, PointerPressedEventArgs e)

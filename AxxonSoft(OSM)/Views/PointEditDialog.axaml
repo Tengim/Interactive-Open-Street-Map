@@ -69,7 +69,7 @@
                     <TextBlock Text="Размер точки:"/>
                     <Slider Minimum="0.3" 
                             Maximum="2.0" 
-                            Value="{Binding PointSize}" 
+                            Value="{Binding PointSize}"
                             TickFrequency="0.01" 
                             IsSnapToTickEnabled="True"/>
                     <TextBlock Text="{Binding PointSize, StringFormat='Размер: {0:F1}'}" 

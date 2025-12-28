@@ -92,5 +92,13 @@
     <Style Selector="ListBox">
 		<Setter Property="Background" Value="{DynamicResource BorderBrush}"/>
     </Style>
+
+    <Style Selector="ListBoxItem">
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="Foreground" Value="{DynamicResource PrimaryTextBrush}"/>
+        <Setter Property="BorderThickness" Value="0"/>
+        <Setter Property="Padding" Value="5,3"/>
+        <Setter Property="Margin" Value="0,1"/>
+    </Style>
     
 </Styles>

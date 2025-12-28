@@ -4,6 +4,7 @@ using Avalonia.Input;
 using Avalonia.Markup.Xaml.MarkupExtensions;
 using Avalonia.Media;
 using Avalonia.Platform.Storage;
+using Avalonia.Platform.Storage;
 using Avalonia.Styling;
 using AxxonSoft_OSM_.Models;
 using AxxonSoft_OSM_.Models.DataModels;
@@ -12,7 +13,6 @@ using AxxonSoft_OSM_.Views;
 using Mapsui.Projections;
 using Mapsui.UI.Avalonia;
 using System;
-using Avalonia.Platform.Storage;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
@@ -20,19 +20,22 @@ using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Windows.Input;
+using Tmds.DBus.Protocol;
 
 namespace AxxonSoft_OSM_.ViewModels
 {
     public class MainWindowViewModel : ViewModelBase
     {
-        private readonly MapService _mapService;
         private MapPoint? _selectedPoint;
         private MapArea? _selectedArea;
         private bool _isInAreaMode;
         private bool _isDarkTheme;
         private List<MapPoint> _tempAreaPoints = new List<MapPoint>();
 
+        private readonly MapService _mapService;
         private readonly DataService _dataService;
+        private readonly DialogService _dialogService;
+
         private AppSettings _appSettings;
 
         public ObservableCollection<MapPoint> Points { get; } = new ObservableCollection<MapPoint>();
@@ -44,7 +47,7 @@ namespace AxxonSoft_OSM_.ViewModels
             set
             {
                 _selectedPoint = value;
-                _mapService.CenterOn(SelectedPoint);
+                _mapService.CenterOnPoint(SelectedPoint);
                 OnPropertyChanged();
                 DeleteSelectedPointCommand.RaiseCanExecuteChanged();
             }
@@ -56,6 +59,7 @@ namespace AxxonSoft_OSM_.ViewModels
             set
             {
                 _selectedArea = value;
+                _mapService.CenterOnArea(SelectedArea);
                 OnPropertyChanged();
                 DeleteSelectedAreaCommand.RaiseCanExecuteChanged();
             }
@@ -93,10 +97,15 @@ namespace AxxonSoft_OSM_.ViewModels
         public RelayCommand ToDarkTheme { get; }
         public RelayCommand ToLightTheme { get; }
 
-        public MainWindowViewModel(MapService mapService)
+        public MainWindowViewModel(MapService mapService, Window window)
         {
             _mapService = mapService;
             _dataService = new DataService();
+            _dialogService = new DialogService();
+
+            OwnerWindow = window;
+
+            _dialogService.SetOwnerWindow(OwnerWindow);
 
             AddPointCommand = new RelayCommand<double[]>((coords) => AddPoint(coords[0], coords[1]));
             DeleteSelectedPointCommand = new RelayCommand(
@@ -159,32 +168,26 @@ namespace AxxonSoft_OSM_.ViewModels
             LoadSettings();
         }
         //События карты
-        public void HandleMapPointerPressed(PointerPressedEventArgs e, object? mapControl)
+        public async Task HandleMapClickAsync(double screenX, double screenY, MapControl mapControl)
         {
-            if (mapControl is Mapsui.UI.Avalonia.MapControl myMapControl)
-            {
-                var screenPosition = e.GetPosition(myMapControl);
-                var (lon, lat) = _mapService.ScreenToWorldCoordinates(screenPosition.X, screenPosition.Y);
+            var (lon, lat) = _mapService.ScreenToWorldCoordinates(screenX, screenY);
 
-                if (IsInAreaMode)
+            if (IsInAreaMode)
+            {
+                AddTempAreaPoint(lat, lon);
+            }
+            else
+            {
+                MapPoint point = _mapService.FindPointAtLocation(lat, lon, Points);
+
+                if (point != null)
                 {
-                    AddTempAreaPoint(lat, lon);
+                    ShowPointDeleteDialog(point);
                 }
                 else
                 {
-                    var existingFeature = _mapService.FindPointAtLocation(lat, lon);
-
-                    if (existingFeature != null)
-                    {
-                        var pointToRemove = Points.FirstOrDefault(p => p.Feature == existingFeature);
-                        RemovePointByFeature(pointToRemove);
-                        Debug.WriteLine("Point removed.");
-                    }
-                    else
-                    {
-                        AddPoint(lat, lon);
-                        Debug.WriteLine("Point added.");
-                    }
+                    AddPoint(lat, lon);
+                    Debug.WriteLine("Point added.");
                 }
             }
         }
@@ -229,7 +232,7 @@ namespace AxxonSoft_OSM_.ViewModels
         {
             if (SelectedPoint?.Feature != null)
             {
-                RemovePointByFeature(SelectedPoint);
+                ShowPointDeleteDialog(SelectedPoint);
             }
         }
 
@@ -254,9 +257,6 @@ namespace AxxonSoft_OSM_.ViewModels
 
             var point = new MapPoint(lat, lon);
             _mapService.AddPoint(point);
-
-            var newFeature = _mapService.FindPointAtLocation(lat, lon);
-            point.Feature = newFeature;
 
             _tempAreaPoints.Add(point);
             FinishAreaCommand.RaiseCanExecuteChanged();
@@ -295,12 +295,17 @@ namespace AxxonSoft_OSM_.ViewModels
             Debug.WriteLine("Создание области отменено");
         }
 
+        private void RemoveArea(MapArea area)
+        {
+            _mapService.RemoveArea(area);
+            Areas.Remove(area);
+        }
+
         private void DeleteSelectedArea()
         {
             if (SelectedArea != null)
             {
-                _mapService.RemoveArea(SelectedArea);
-                Areas.Remove(SelectedArea);
+                ShowAreaDeleteDialog(SelectedArea);
                 SelectedArea = null;
             }
         }
@@ -339,7 +344,40 @@ namespace AxxonSoft_OSM_.ViewModels
             var result = await window.ShowDialog<MapArea?>(OwnerWindow);
             return result;
         }
-        
+
+        private async Task ShowPointDeleteDialog(MapPoint point)
+        {
+            if(point == null) return;
+            bool confirmDelete = await _dialogService.ShowConfirmationDialogAsync(
+                            "Подтверждение удаления",
+                            $"Вы уверены, что хотите удалить точку:\n\"{point.Name}\"?",
+                            "Удалить",
+                            "Отмена"
+                        );
+
+            if (confirmDelete)
+            {
+                RemovePointByFeature(point);
+                Debug.WriteLine("Point removed.");
+            }
+        }
+        private async Task ShowAreaDeleteDialog(MapArea area)
+        {
+            if (area == null) return;
+            bool confirmDelete = await _dialogService.ShowConfirmationDialogAsync(
+                            "Подтверждение удаления",
+                            $"Вы уверены, что хотите удалить область:\n\"{area.Name}\"?",
+                            "Удалить",
+                            "Отмена"
+                        );
+
+            if (confirmDelete)
+            {
+                RemoveArea(area);
+                Debug.WriteLine("Point removed.");
+            }
+        }
+
         public async Task LoadSettings()
         {
             _appSettings = await _dataService.LoadSettingsAsync();
@@ -632,31 +670,6 @@ namespace AxxonSoft_OSM_.ViewModels
             catch (Exception ex)
             {
                 Console.WriteLine($"Ошибка сохранения: {ex.Message}");
-            }
-        }
-        public async Task HandleMapClickAsync(double screenX, double screenY, MapControl mapControl)
-        {
-            var (lon, lat) = _mapService.ScreenToWorldCoordinates(screenX, screenY);
-
-            if (IsInAreaMode)
-            {
-                AddTempAreaPoint(lat, lon);
-            }
-            else
-            {
-                var existingFeature = _mapService.FindPointAtLocation(lat, lon);
-
-                if (existingFeature != null)
-                {
-                    var pointToRemove = Points.FirstOrDefault(p => p.Feature == existingFeature);
-                    RemovePointByFeature(pointToRemove);
-                    Debug.WriteLine("Point removed.");
-                }
-                else
-                {
-                    AddPoint(lat, lon);
-                    Debug.WriteLine("Point added.");
-                }
             }
         }
         private void CreateNewFile()

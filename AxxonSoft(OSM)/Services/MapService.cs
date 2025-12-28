@@ -150,26 +150,23 @@ namespace AxxonSoft_OSM_.Services
             _mapControl.Refresh();
         }
 
-        public IFeature? FindPointAtLocation(double lat, double lon, double pixelTolerance = 10)
+        public MapPoint FindPointAtLocation(double lat, double lon, IEnumerable<MapPoint> points, double pixelTolerance = 10)
         {
             var targetPoint = SphericalMercator.FromLonLat(lon, lat);
             var targetScreen = _mapControl.Map.Navigator.Viewport.WorldToScreen(targetPoint.ToMPoint());
 
-            foreach (var feature in _pointsLayer.GetFeatures())
+            foreach (var point in points)
             {
-                if (feature is PointFeature pointFeature)
+                var pointWorld = SphericalMercator.FromLonLat(point.Longitude, point.Latitude);
+                var pointScreen = _mapControl.Map.Navigator.Viewport.WorldToScreen(pointWorld.ToMPoint());
+
+                var screenDistance = Math.Sqrt(
+                    Math.Pow(pointScreen.X - targetScreen.X, 2) +
+                    Math.Pow(pointScreen.Y - targetScreen.Y, 2));
+
+                if (screenDistance <= point.PointSize * 15 && point.Feature != null)
                 {
-                    var point = pointFeature.Point;
-                    var pointScreen = _mapControl.Map.Navigator.Viewport.WorldToScreen(point);
-
-                    var screenDistance = Math.Sqrt(
-                        Math.Pow(pointScreen.X - targetScreen.X, 2) +
-                        Math.Pow(pointScreen.Y - targetScreen.Y, 2));
-
-                    if (screenDistance < pixelTolerance)
-                    {
-                        return feature;
-                    }
+                    return point;
                 }
             }
 
@@ -249,11 +246,62 @@ namespace AxxonSoft_OSM_.Services
             Console.WriteLine($"Камера восстановлена: X={camera.CenterX:F2}, Y={camera.CenterY:F2}, Zoom={camera.Resolution:F2}");
         }
 
-        public void CenterOn(MapPoint point)
+        public void CenterOnPoint(MapPoint point)
         {
             if (point == null) return;
             var mercator = SphericalMercator.FromLonLat(point.Longitude, point.Latitude);
             _mapControl.Map.Navigator.CenterOnAndZoomTo(new MPoint(mercator.x, mercator.y), _mapControl.Map.Navigator.Viewport.Resolution, 1000);
+        }
+        public void CenterOnArea(MapArea area, bool fitToView = true)
+        {
+            if (area == null || area.Points == null || area.Points.Count == 0) return;
+
+            double minLon = area.Points[0].Longitude;
+            double maxLon = area.Points[0].Longitude;
+            double minLat = area.Points[0].Latitude;
+            double maxLat = area.Points[0].Latitude;
+
+            foreach (var point in area.Points)
+            {
+                if (point.Longitude < minLon) minLon = point.Longitude;
+                if (point.Longitude > maxLon) maxLon = point.Longitude;
+                if (point.Latitude < minLat) minLat = point.Latitude;
+                if (point.Latitude > maxLat) maxLat = point.Latitude;
+            }
+
+            double centerLon = (minLon + maxLon) / 2;
+            double centerLat = (minLat + maxLat) / 2;
+
+            var mercator = SphericalMercator.FromLonLat(centerLon, centerLat);
+
+            if (fitToView)
+            {
+                var minPoint = SphericalMercator.FromLonLat(minLon, minLat);
+                var maxPoint = SphericalMercator.FromLonLat(maxLon, maxLat);
+
+                double width = Math.Abs(maxPoint.x - minPoint.x);
+                double height = Math.Abs(maxPoint.y - minPoint.y);
+
+                double viewportWidth = _mapControl.Map.Navigator.Viewport.Width;
+                double viewportHeight = _mapControl.Map.Navigator.Viewport.Height;
+
+                double resolutionX = width / viewportWidth;
+                double resolutionY = height / viewportHeight;
+
+                double resolution = Math.Max(resolutionX, resolutionY) * 1.2; // Добавляем отступ 20%
+
+                _mapControl.Map.Navigator.CenterOnAndZoomTo(
+                    new MPoint(mercator.x, mercator.y),
+                    resolution,
+                    1000);
+            }
+            else
+            {
+                _mapControl.Map.Navigator.CenterOnAndZoomTo(
+                    new MPoint(mercator.x, mercator.y),
+                    _mapControl.Map.Navigator.Viewport.Resolution,
+                    1000);
+            }
         }
         public void CenterAndZoomOn(MapPoint point,double Resolution)
         {
